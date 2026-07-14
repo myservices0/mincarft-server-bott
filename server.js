@@ -7,44 +7,44 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 let activeBots = [];
-let targetServer = { ip: '', port: 25565, version: '1.21.1' };
+let targetServer = { ip: '', version: '1.21.1' };
 let isRunning = false;
 let serverLogs = [];
 
 function addLog(message) {
     console.log(message);
-    serverLogs.unshift(message); // Add to the top
-    if (serverLogs.length > 15) serverLogs.pop(); // Keep only the last 15 messages
+    serverLogs.unshift(message);
+    if (serverLogs.length > 20) serverLogs.pop();
 }
 
 function spawnBot(username) {
     if (!isRunning) return;
 
-    addLog(`⏳ Attempting to connect ${username}...`);
+    addLog(`⏳ ${username} is calculating Aternos route...`);
 
+    // Aternos needs the bot to figure out the port automatically. We omit the port to force SRV lookup.
     const bot = mineflayer.createBot({
         host: targetServer.ip,
-        port: targetServer.port,
         username: username,
-        version: targetServer.version // Forces the exact version
+        version: targetServer.version
     });
 
+    // Exactly 5 seconds auto-reconnect as requested
     bot.on('end', (reason) => {
         addLog(`🔴 ${username} disconnected: ${reason}`);
         activeBots = activeBots.filter(b => b.username !== username);
         
         if (isRunning) {
-            addLog(`🔄 Reconnecting ${username} in 10 seconds...`);
-            setTimeout(() => spawnBot(username), 10000); // 10 second delay prevents IP bans
+            addLog(`🔄 Reconnecting ${username} in 5 seconds...`);
+            setTimeout(() => spawnBot(username), 5000); 
         }
     });
 
-    bot.on('error', (err) => {
-        addLog(`⚠️ ${username} ERROR: ${err.message}`);
-    });
+    bot.on('kicked', (reason) => addLog(`👟 ${username} got kicked: ${reason}`));
+    bot.on('error', (err) => addLog(`⚠️ ${username} ERROR: ${err.message}`));
     
     bot.once('spawn', () => {
-        addLog(`🟢 ${username} spawned in the world!`);
+        addLog(`🟢 ${username} successfully joined the server!`);
 
         // Anti-AFK Routine
         setInterval(() => {
@@ -64,27 +64,28 @@ function spawnBot(username) {
 
             if (Math.random() > 0.5) bot.swingArm();
 
-        }, 15000); 
+        }, 15000); // Fidgets every 15 seconds
     });
 
     activeBots.push({ username, instance: bot });
 }
 
 app.post('/api/start', (req, res) => {
-    const { ip, port, count, version } = req.body;
+    const { ip, count, version } = req.body;
     if (isRunning) return res.status(400).json({ error: "Bots are already running!" });
 
-    targetServer = { ip, port: parseInt(port), version };
+    targetServer = { ip, version };
     isRunning = true;
-    serverLogs = []; // Clear old logs
+    serverLogs = []; 
 
-    addLog(`🚀 Booting up ${count} bots for ${ip} on version ${version}...`);
+    addLog(`🚀 Launching ${count} bots to ${ip} (Version ${version})...`);
 
+    // Loops through and adds as many bots as you requested in the UI
     for (let i = 1; i <= count; i++) {
-        // Stagger bot logins by 3 seconds so Aternos doesn't think it's a DDoS attack
+        // Space them out by 5 seconds so Aternos doesn't trigger anti-DDoS
         setTimeout(() => {
             if (isRunning) spawnBot(`AFK_Bot_${i}`);
-        }, i * 3000);
+        }, i * 5000);
     }
     res.json({ message: "Starting sequence initiated." });
 });
