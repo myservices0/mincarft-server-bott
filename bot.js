@@ -1,4 +1,14 @@
 const mineflayer = require('mineflayer');
+const http = require('http');
+
+// === CLOUD HOST LIFESAVER ===
+// Free hosts will kill the bot if it doesn't open a web port. This keeps it alive!
+const webPort = process.env.PORT || 3000;
+http.createServer((req, res) => {
+    res.writeHead(200, { 'Content-Type': 'text/plain' });
+    res.end('Minecraft Bots are currently running 24/7!');
+}).listen(webPort, () => console.log(`Dummy web server running on port ${webPort}`));
+// ============================
 
 // === SERVER SETTINGS ===
 const SERVER_IP = 'watersmp-Og8t.aternos.me'; 
