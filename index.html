@@ -5,49 +5,60 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Aternos Bot Manager</title>
     <style>
-        body { font-family: Arial, sans-serif; background: #1e1e2e; color: #cdd6f4; text-align: center; padding: 50px; }
-        .card { background: #313244; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
-        input { margin: 10px 0; padding: 10px; width: 90%; border-radius: 5px; border: none; background: #45475a; color: white; }
-        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 10px 5px; }
+        body { font-family: Arial, sans-serif; background: #1e1e2e; color: #cdd6f4; text-align: center; padding: 20px; }
+        .card { background: #313244; padding: 30px; border-radius: 10px; display: inline-block; box-shadow: 0 4px 10px rgba(0,0,0,0.5); width: 100%; max-width: 400px; }
+        input { margin: 10px 0; padding: 10px; width: 90%; border-radius: 5px; border: none; background: #45475a; color: white; box-sizing: border-box; }
+        button { padding: 10px 20px; border: none; border-radius: 5px; cursor: pointer; font-weight: bold; margin: 10px 5px; width: 45%; }
         .start-btn { background: #a6e3a1; color: #1e1e2e; }
         .stop-btn { background: #f38ba8; color: #1e1e2e; }
-        #status-box { margin-top: 20px; font-weight: bold; color: #89b4fa; }
+        #status-box { margin-top: 20px; font-weight: bold; color: #89b4fa; font-size: 1.2em; }
+        .terminal { background: #11111b; color: #a6adc8; padding: 15px; margin-top: 20px; border-radius: 5px; text-align: left; height: 200px; overflow-y: auto; font-family: monospace; font-size: 0.9em; }
     </style>
 </head>
 <body>
     <div class="card">
         <h2>Bot Dashboard</h2>
         <input type="text" id="ip" placeholder="Server IP (e.g. myworld.aternos.me)">
-        <input type="number" id="port" placeholder="Port (e.g. 25565)" value="25565">
+        <input type="number" id="port" placeholder="Port (Default: 25565)" value="25565">
+        <input type="text" id="version" placeholder="Minecraft Version (e.g. 1.21.1)" value="1.21.1">
         <input type="number" id="count" placeholder="How many bots?" value="1">
         <br>
         <button class="start-btn" onclick="startBots()">Start Bots</button>
-        <button class="stop-btn" onclick="stopBots()">Shut Down All</button>
+        <button class="stop-btn" onclick="stopBots()">Stop All</button>
         
         <div id="status-box">Checking status...</div>
+
+        <div class="terminal" id="log-box">
+            Waiting for logs...
+        </div>
     </div>
 
     <script>
         async function fetchStatus() {
             const res = await fetch('/api/status');
             const data = await res.json();
+            
             const statusBox = document.getElementById('status-box');
             if (data.running) {
-                statusBox.innerHTML = `🟢 ONLINE: ${data.botCount} bots connected to ${data.server}`;
+                statusBox.innerHTML = `🟢 ONLINE: ${data.botCount} bots active`;
             } else {
-                statusBox.innerHTML = `🔴 OFFLINE: No bots running.`;
+                statusBox.innerHTML = `🔴 OFFLINE`;
             }
+
+            const logBox = document.getElementById('log-box');
+            logBox.innerHTML = data.logs.join('<br>') || "Waiting for logs...";
         }
 
         async function startBots() {
             const ip = document.getElementById('ip').value;
-            const port = document.getElementById('port').value;
+            const port = document.getElementById('port').value || 25565;
+            const version = document.getElementById('version').value;
             const count = document.getElementById('count').value;
             
             await fetch('/api/start', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ip, port, count })
+                body: JSON.stringify({ ip, port, count, version })
             });
             fetchStatus();
         }
@@ -57,7 +68,7 @@
             fetchStatus();
         }
 
-        setInterval(fetchStatus, 3000);
+        setInterval(fetchStatus, 2000);
         fetchStatus();
     </script>
 </body>
