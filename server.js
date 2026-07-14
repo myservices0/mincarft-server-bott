@@ -24,7 +24,6 @@ function addLog(message) {
     if (serverLogs.length > 25) serverLogs.pop();
 }
 
-// Stop the server from fully crashing if a bot breaks
 process.on('uncaughtException', (err) => {
     addLog(`💥 CRITICAL ERROR: ${err.message}`);
 });
@@ -39,7 +38,9 @@ function spawnBot(username, ip, port, version) {
             host: ip,
             port: port,
             username: username,
-            version: version 
+            version: version,
+            viewDistance: 'tiny', // 🧠 EXTREME RAM SAVER: Stops loading chunks
+            colorsEnabled: false
         });
 
         bot.on('end', (reason) => {
@@ -57,6 +58,10 @@ function spawnBot(username, ip, port, version) {
         
         bot.once('spawn', () => {
             addLog(`🟢 [${username}] Spawned in the world!`);
+            
+            // 🧠 EXTREME RAM SAVER: Disables falling/water physics since they just stand there
+            bot.physicsEnabled = false; 
+
             setInterval(() => {
                 if (!isRunning || !bot.entity) return; 
                 bot.look(Math.random() * Math.PI * 2, 0, true); 
@@ -76,16 +81,18 @@ app.post('/api/start', (req, res) => {
     
     if (isRunning) return res.status(400).json({ error: "Bots are already running!" });
 
-    // FIX: Automatically remove the port from the IP if the user accidentally pastes it in
     if (ip.includes(':')) {
         ip = ip.split(':')[0]; 
     }
 
     isRunning = true;
     serverLogs = []; 
-    addLog(`🚀 Launching ${count} bots to ${ip}:${port}...`);
+    
+    // Limits to 10 bots max to prevent the free cloud host from crashing
+    const safeCount = Math.min(count, 10);
+    addLog(`🚀 Launching ${safeCount} bots to ${ip}:${port}...`);
 
-    for (let i = 0; i < count; i++) {
+    for (let i = 0; i < safeCount; i++) {
         const name = botNames[i % botNames.length]; 
         setTimeout(() => {
             if (isRunning) spawnBot(name, ip, parseInt(port), version);
